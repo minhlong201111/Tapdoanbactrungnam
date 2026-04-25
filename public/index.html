@@ -17,45 +17,48 @@
   <h1>🏢 Tập Đoàn Bắc Trung Nam</h1>
   <p>Chào mừng Pioneer đến với hệ sinh thái Pi!</p>
   <button class="btn" id="payBtn">⛏️ Thanh toán 1 Pi</button>
-  <p id="status">Đang tải Pi SDK...</p>
+  <p id="status">Đang tải...</p>
 <script>
-  window.onload = function() {
-    try {
-      Pi.init({ version: "2.0", sandbox: true });
-      document.getElementById("status").innerText = "✅ Sẵn sàng thanh toán!";
-      document.getElementById("payBtn").onclick = function() {
-        document.getElementById("status").innerText = "⏳ Đang xử lý...";
-        Pi.authenticate(["payments"], {
-          onIncompletePaymentFound: function(payment) {
-            console.log("Incomplete payment:", payment);
-          }
-        }).then(function(auth) {
-          return Pi.createPayment({
-            amount: 1,
-            memo: "Tap Doan Bac Trung Nam - Test",
-            metadata: { test: true }
-          }, {
-            onReadyForServerApproval: function(paymentId) {
-              document.getElementById("status").innerText = "✅ Chờ duyệt: " + paymentId;
-            },
-            onReadyForServerCompletion: function(paymentId, txid) {
-              document.getElementById("status").innerText = "🎉 Thành công! " + txid;
-            },
-            onCancel: function() {
-              document.getElementById("status").innerText = "❌ Đã hủy";
-            },
-            onError: function(error) {
-              document.getElementById("status").innerText = "❌ Lỗi: " + error;
-            }
+window.onload = function() {
+  Pi.init({ version: "2.0", sandbox: true });
+  document.getElementById("status").innerText = "✅ Sẵn sàng!";
+  document.getElementById("payBtn").onclick = function() {
+    document.getElementById("status").innerText = "⏳ Đang xử lý...";
+    Pi.authenticate(["payments"], {
+      onIncompletePaymentFound: function(p) {}
+    }).then(function() {
+      Pi.createPayment({
+        amount: 1,
+        memo: "Tap Doan Bac Trung Nam - Test",
+        metadata: { test: true }
+      }, {
+        onReadyForServerApproval: function(paymentId) {
+          document.getElementById("status").innerText = "⏳ Đang duyệt...";
+          fetch("/api/approve", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({ paymentId })
           });
-        }).catch(function(err) {
-          document.getElementById("status").innerText = "❌ Auth lỗi: " + err;
-        });
-      };
-    } catch(e) {
-      document.getElementById("status").innerText = "❌ SDK lỗi: " + e;
-    }
+        },
+        onReadyForServerCompletion: function(paymentId, txid) {
+          fetch("/api/complete", {
+            method: "POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({ paymentId, txid })
+          }).then(function() {
+            document.getElementById("status").innerText = "🎉 Thành công!";
+          });
+        },
+        onCancel: function() {
+          document.getElementById("status").innerText = "❌ Đã hủy";
+        },
+        onError: function(e) {
+          document.getElementById("status").innerText = "❌ Lỗi: " + e;
+        }
+      });
+    });
   };
+};
 </script>
 </body>
 </html>
